@@ -1,6 +1,6 @@
 CC = gcc
 CFLAGS = -Wall -Iinclude
-SRC = src/main.c src/input.c
+SRC = src/main.c src/input.c src/files.c
 OUT = build/vernam.exe
 
 all:

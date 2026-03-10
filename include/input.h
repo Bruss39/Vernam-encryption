@@ -3,6 +3,7 @@
 
 #include <stdbool.h>
 
-bool get_input(char path[]);
+bool read_input(char *path);
+void get_path(char *path);
 
 #endif
