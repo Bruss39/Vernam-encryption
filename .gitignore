@@ -1,0 +1,18 @@
+# build directory
+build/
+
+# executables
+*.exe
+*.out
+*.bin
+
+# object files
+*.o
+*.obj
+
+# debug files
+*.pdb
+
+# temporary
+*.tmp
+*.log
