@@ -1,38 +1,55 @@
 #include "input.h"
 #include "files.h"
+
 #include <stdio.h>
+#include <stdbool.h>
 #include <string.h>
 
 
-bool read_input(char *path) {
+static bool read_path(char *path) {
     /*
-    Get input and save it in passed pointer.
-    Return true if input was read successfully.
+    Read input into path.
+    Return false on input error, true otherwise.
+    Remove trailing '\n' if present.
     */
 
-    if (fgets(path, 256, stdin) != NULL) {  // Get path
-        path[strcspn(path, "\n")] = '\0';   // Remove '\n' from the end
-        return 1;
-    }
-    
-    return 0;
+    if (fgets(path, 256, stdin) == NULL)
+        return false;
+
+    path[strcspn(path, "\n")] = '\0';
+    return true;
 }
 
 
-void get_path(char *path){
-    /*
-    Get input and check if it isn't void or invalid.
-    */
+static bool is_empty_path(const char *path) {
+    return (path == NULL || path[0] == '\0');
+}
 
-    while (true){
-        if (read_input(path) == 0  ||  path[0] == '\0'){  // Retry if the input is void
+
+void get_existing_file_path(char *path) {
+    while (true) {
+        if (!read_path(path) || is_empty_path(path)) {
             printf("Retry: ");
             continue;
-        } else if (!file_exist(path)){
-            printf("Cannot open the file, retry: ");  // Retry if the path is invalid
-            continue;
-        } else {
-            break;
         }
+
+        if (!file_exist(path)) {
+            printf("Cannot open the file, retry: ");
+            continue;
+        }
+
+        break;
+    }
+}
+
+
+void get_new_file_path(char *path) {
+    while (true) {
+        if (!read_path(path) || is_empty_path(path)) {
+            printf("Retry: ");
+            continue;
+        }
+
+        break;
     }
 }

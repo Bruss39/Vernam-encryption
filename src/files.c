@@ -3,11 +3,6 @@
 #include <stdbool.h>
 
 long get_size_file(FILE *file){
-    /*
-    Return size of the file [byte]
-    else return -1 if an error occurred
-    */
-
     long size = 0;
 
     if (fseek(file, 0, SEEK_END)){  // Move at the end of file
@@ -25,11 +20,6 @@ long get_size_file(FILE *file){
 
 
 bool file_exist(const char *path){
-    /*
-    Try to open the file at the given path.
-    Return true if successful.
-    */
-
     FILE *file = fopen(path, "rb");  // Try open file
 
     if (file == NULL){  // Exit if fopen() fails
