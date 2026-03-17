@@ -1,15 +1,27 @@
+#define _FILE_OFFSET_BITS 64
+
 #include "files.h"
 #include <stdio.h>
-#include <stdbool.h>
+#include <sys/types.h>
 
-long get_size_file(FILE *file){
-    long size = 0;
+#ifdef _WIN32
+    #define file_seek  _fseeki64
+    #define file_tell  _ftelli64
+    typedef long long file_offset_t;
+#else
+    #define file_seek  fseeko
+    #define file_tell  ftello
+    typedef off_t file_offset_t;
+#endif
 
-    if (fseek(file, 0, SEEK_END)){  // Move at the end of file
+long long get_size_file(FILE *file){
+    long long size = 0;
+
+    if (file_seek(file, 0, SEEK_END)){  // Move at the end of file
         return -1;  // Failed 
     }
 
-    size = ftell(file);  // Get the distance form start in byte
+    size = file_tell(file);  // Get the distance form the start in byte
     if (size < 0){
         return -1;  // Failed 
     }

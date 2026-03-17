@@ -1,10 +1,12 @@
 #ifndef VERNAM_H
 #define VERNAM_H
 
+#include <stdbool.h>
+
 /*
 Create a new key and save it to *outPath.
 Return true on success, false on error.
 */
-void generate_key(char *outPath, int size_in_bit);
+bool generate_key(char *outPath, long long size, char *key_name);
 
 #endif

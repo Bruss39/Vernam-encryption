@@ -9,6 +9,7 @@ build/
 # object files
 *.o
 *.obj
+*.key
 
 # debug files
 *.pdb
