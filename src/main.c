@@ -30,7 +30,7 @@ int main() {
     if (answer[0] == '\n' || answer[0] == 'y' || answer[0] == 'Y'){  // Get the key if the users has one
         printf ("Enter key file path: ");
         get_existing_file_path(key_path);
-        printf ("\nkey_path:   \"%s\"", key_path);
+        printf ("key_path:   \"%s\"", key_path);
     }
     else {
         printf ("Enter folder where save the new key: ");
@@ -51,7 +51,9 @@ int main() {
     }
     key = fopen(key_path, "rb");  // Open key file
 
-    // XOR
+    xor_cipher(file, key);  // apply bit-bit xor
 
+    fclose(file);
+    fclose(key);
     return 0;
 }

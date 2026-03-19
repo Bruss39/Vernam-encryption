@@ -13,7 +13,8 @@
 #endif
 
 
-static bool linux_fill_random(unsigned char *buffer, size_t size){
+static bool linux_fill_random(unsigned char *buffer, size_t size)
+{
     /*
     Linux version
     Fill buffer with random bytes.
@@ -23,7 +24,8 @@ static bool linux_fill_random(unsigned char *buffer, size_t size){
 }
 
 
-static bool win_fill_random(unsigned char *buffer, size_t size){
+static bool win_fill_random(unsigned char *buffer, size_t size)
+{
     /*
     Windows version
     Fill buffer with random bytes.
@@ -36,7 +38,18 @@ static bool win_fill_random(unsigned char *buffer, size_t size){
 }
 
 
-bool generate_key(char *outPath, long long size, char *key_name){
+static bool read_bytes(unsigned char *buffer, size_t size)
+{
+    /*
+    Read bytes from a file and store them in a buffer.
+    Return true on success.
+    */
+    return 0;
+}
+
+
+bool generate_key(char *outPath, long long size, char *key_name)
+{
     if (size <= 0){
         printf("ERROR: size <= 0");
         return false;
@@ -87,4 +100,10 @@ bool generate_key(char *outPath, long long size, char *key_name){
 
     fclose(file);
     return true;
+}
+
+
+bool xor_cipher(FILE *data, FILE *key)
+{
+    return 0;
 }
