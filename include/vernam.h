@@ -15,6 +15,6 @@ Apply XOR for symmetric file encryption/decryption.
 WARNING: data file will be overwritten by its decrypted/encrypted version!
 Return true on success, false otherwise.
 */
-bool xor_cipher(FILE *data, FILE *key);
+bool xor_cipher(FILE *data, FILE *key, char *out_path);
 
 #endif
