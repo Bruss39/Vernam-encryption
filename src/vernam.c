@@ -9,6 +9,7 @@
 #ifdef _WIN32
     #include <windows.h>
     #include <bcrypt.h>
+    #include <ntstatus.h>
 #endif
 
 
@@ -28,7 +29,10 @@ static bool win_fill_random(unsigned char *buffer, size_t size){
     Fill buffer with random bytes.
     Return true on success.
     */
-    return 0;
+    if (BCryptGenRandom(NULL, buffer, size, BCRYPT_USE_SYSTEM_PREFERRED_RNG) == STATUS_SUCCESS)
+        return true;
+    
+     return false;
 }
 
 
