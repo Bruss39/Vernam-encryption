@@ -6,17 +6,27 @@
 #include <string.h>
 
 
-static bool read_path(char *path) {
+bool read_input(char *input, size_t size) {
     /*
-    Read input into path.
+    Read input into the buffer.
     Return false on input error, true otherwise.
     Remove trailing '\n' if present.
     */
 
-    if (fgets(path, 256, stdin) == NULL)
+    if (fgets(input, size, stdin) == NULL)
         return false;
 
-    path[strcspn(path, "\n")] = '\0';
+    if (strchr(input, '\n') == NULL) {
+        int next = getchar();
+        if (next != '\n' && next != EOF) {
+            while (next != '\n' && next != EOF) next = getchar();
+            printf("Input too long, retry.\n");
+            input[0] = '\0';
+            return true;
+        }
+    }
+
+    input[strcspn(input, "\r\n")] = '\0';
     return true;
 }
 
@@ -26,9 +36,11 @@ static bool is_empty_path(const char *path) {
 }
 
 
-void get_existing_file_path(char *path) {
+bool get_existing_file_path(char *path) {
     while (true) {
-        if (!read_path(path) || is_empty_path(path)) {
+        if (!read_input(path, 256)) return false;
+
+        if (is_empty_path(path)) {
             printf("Retry: ");
             continue;
         }
@@ -38,18 +50,20 @@ void get_existing_file_path(char *path) {
             continue;
         }
 
-        break;
+        return true;
     }
 }
 
 
-void get_new_file_path(char *path) {
+bool get_new_file_path(char *path) {
     while (true) {
-        if (!read_path(path) || is_empty_path(path)) {
+        if (!read_input(path, 256)) return false;
+
+        if (is_empty_path(path)) {
             printf("Retry: ");
             continue;
         }
 
-        break;
+        return true;
     }
 }

@@ -22,40 +22,62 @@ int main() {
 
     // === GET INPUT ===
     printf ("\n\nEnter file path: ");  // Ask for the file path to encrypt
-    get_existing_file_path(file_path);
+    if (!get_existing_file_path(file_path)) return 1;
     printf ("file_path:   \"%s\"", file_path);
     file = fopen(file_path, "rb");  // Open data file
+    if (file == NULL) {
+        fprintf(stderr, "\nERROR: cannot open data file.");
+        return 1;
+    }
     
     char answer[8];
     printf ("\n\nHave you a key file? (Y/n) ");  // Ask for the key path (default = Y)
-    fgets(answer, sizeof(answer), stdin);
+    if (!read_input(answer, sizeof(answer))) {
+        fclose(file);
+        return 1;
+    }
 
-    if (answer[0] == '\n' || answer[0] == 'y' || answer[0] == 'Y'){  // Get the key if the users has one
+    if (answer[0] == '\0' || answer[0] == 'y' || answer[0] == 'Y'){  // Get the key if the users has one
         printf ("Enter key file path: ");
-        get_existing_file_path(key_path);
+        if (!get_existing_file_path(key_path)) {
+            fclose(file);
+            return 1;
+        }
         printf ("key_path:   \"%s\"", key_path);
     }
     else {
         printf ("Enter folder where save the new key: ");
-        get_new_file_path(key_path);
+        if (!get_new_file_path(key_path)) {
+            fclose(file);
+            return 1;
+        }
         
         strcpy(out_path, key_path);  // get out_path for xor_cipher() function
         already_correct_out_path = true;
 
-        char key_name[20];
+        char key_name[256];
         printf ("Choose a name for your new key: ");
-        scanf("%s", key_name);
+        if (!get_new_file_path(key_name)) {
+            fclose(file);
+            return 1;
+        }
 
         key_size = get_size_file(file);
 
         if (!generate_key(key_path, key_size, key_name)){  // Generate one
             printf("\nERROR: failed to generate the key in path: \"%s\".", key_path);
+            fclose(file);
             return 1;
         } else {
-            printf("\nCorrectly generation of key at path: \"%s\".", key_path);
+            printf("\nKey generated at path: \"%s\".", key_path);
         }
     }
     key = fopen(key_path, "rb");  // Open key file
+    if (key == NULL) {
+        fprintf(stderr, "\nERROR: cannot open key file.");
+        fclose(file);
+        return 1;
+    }
 
     if (!already_correct_out_path)
     {
@@ -63,21 +85,33 @@ int main() {
         strcpy(out_path, key_path);
         char *last1 = strrchr(out_path, '/');
         char *last2 = strrchr(out_path, '\\');
-        char *last = last1 > last2 ? last1 : last2;
-        if (last) *last = '\0';
+        char *last = last1;
+        if (last2 != NULL && (last == NULL || last2 > last)) last = last2;
+        if (last == NULL) strcpy(out_path, ".");
+        else if (last == out_path || (last == out_path + 2 && out_path[1] == ':')) last[1] = '\0';
+        else *last = '\0';
     }
 
     // === XOR ===
-    if (get_size_file(file) == get_size_file(key))
+    long long file_size = get_size_file(file);
+    key_size = get_size_file(key);
+    int result = 1;
+
+    if (file_size < 0 || key_size < 0) {
+        fprintf(stderr, "\nERROR: cannot read file sizes.");
+    }
+    else if (file_size == key_size)
     {
-        if (xor_cipher(file, key, out_path)) printf ("\n\nOutput saved in '%s'\nBye! (^._.^)", out_path);
+        if (xor_cipher(file, key, out_path)) {
+            printf ("\n\nOutput saved in '%s'\nBye! (^._.^)\n", out_path);
+            result = 0;
+        }
         else printf ("\nError occurred in XOR function");
     } else {
         printf("\nWARNING: data and key files have different sizes!");
-        return 1;
     }
 
     fclose(file);
     fclose(key);
-    return 0;
+    return result;
 }

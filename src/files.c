@@ -1,4 +1,5 @@
 #define _FILE_OFFSET_BITS 64
+#define _POSIX_C_SOURCE 200809L
 
 #include "files.h"
 #include <stdio.h>
@@ -17,6 +18,8 @@
 long long get_size_file(FILE *file){
     long long size = 0;
 
+    if (file == NULL) return -1;
+
     if (file_seek(file, 0, SEEK_END)){  // Move at the end of file
         return -1;  // Failed 
     }
@@ -26,7 +29,7 @@ long long get_size_file(FILE *file){
         return -1;  // Failed 
     }
 
-    rewind(file);  // Move file pointer to the beginning
+    if (file_seek(file, 0, SEEK_SET)) return -1;  // Move file pointer to the beginning
     return size;
 }
 

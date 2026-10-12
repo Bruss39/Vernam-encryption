@@ -7,6 +7,7 @@
 #include <string.h>
 #include <stdlib.h>
 #include <time.h>
+#include <errno.h>
 
 #ifdef _WIN32
     #include <windows.h>
@@ -20,6 +21,7 @@ enum {
 };
 
 
+#ifndef _WIN32
 static bool linux_fill_random(unsigned char *buffer, size_t size)
 {
     /*
@@ -27,10 +29,15 @@ static bool linux_fill_random(unsigned char *buffer, size_t size)
     Fill buffer with random bytes.
     Return true on success.
     */
-    return 0;
+    FILE *random = fopen("/dev/urandom", "rb");
+    if (random == NULL) return false;
+
+    bool success = fread(buffer, 1, size, random) == size;
+    if (fclose(random) != 0) success = false;
+    return success;
 }
 
-
+#else
 static bool win_fill_random(unsigned char *buffer, size_t size)
 {
     /*
@@ -38,29 +45,39 @@ static bool win_fill_random(unsigned char *buffer, size_t size)
     Fill buffer with random bytes.
     Return true on success.
     */
-    if (BCryptGenRandom(NULL, buffer, size, BCRYPT_USE_SYSTEM_PREFERRED_RNG) == STATUS_SUCCESS)
+    if (BCryptGenRandom(NULL, buffer, (ULONG)size, BCRYPT_USE_SYSTEM_PREFERRED_RNG) == STATUS_SUCCESS)
         return true;
     
-     return false;
+    return false;
 }
+#endif
 
 
-bool generate_key(char *outPath, long long size, char *key_name)
+bool generate_key(char *outPath, long long size, const char *key_name)
 {
-    if (size <= 0){
-        printf("ERROR: size <= 0");
+    if (size < 0){
+        printf("ERROR: invalid file size");
         return false;
     }
 
-    strcat(key_name, ".key");  // Append key name to path
-    strcat(outPath, "/");
-    strcat(outPath, key_name);
+    if (key_name[0] == '\0' || strchr(key_name, '/') || strchr(key_name, '\\')) {
+        printf("ERROR: key name must not contain a path");
+        return false;
+    }
 
-    FILE *file = fopen(outPath, "wb");  // Create key file
+    char new_path[256];
+    int length = snprintf(new_path, sizeof(new_path), "%s/%s.key", outPath, key_name);
+    if (length < 0 || length >= (int)sizeof(new_path)) {
+        printf("ERROR: key path is too long");
+        return false;
+    }
+
+    FILE *file = fopen(new_path, "wbx");  // Create key file without overwriting
     if (file == NULL){
-        printf("ERROR: file == NULL");
+        printf("ERROR: cannot create key file (check folder and existing files)");
         return false;
     }
+    strcpy(outPath, new_path);
 
     unsigned char buffer[BUFFER_SIZE];
     unsigned long long remaining = size;
@@ -75,14 +92,16 @@ bool generate_key(char *outPath, long long size, char *key_name)
         if (!win_fill_random(buffer, chunk))
         {
             fclose(file);
-            printf("ERROR: failled in 'win_fill_random'");
+            remove(outPath);
+            printf("ERROR: failed in 'win_fill_random'");
             return false;
         }
 #else
         if (!linux_fill_random(buffer, chunk))
         {
             fclose(file);
-            printf("ERROR: failled in 'linux_fill_random'");
+            remove(outPath);
+            printf("ERROR: failed in 'linux_fill_random'");
             return false;
         }
 #endif
@@ -90,13 +109,18 @@ bool generate_key(char *outPath, long long size, char *key_name)
         if (fwrite(buffer, 1, chunk, file) != chunk)
         {
             fclose(file);
-            printf("ERROR: failled to write file");
+            remove(outPath);
+            printf("ERROR: failed to write file");
             return false;
         }
         remaining -= chunk;
     }
 
-    fclose(file);
+    if (fclose(file) != 0) {
+        remove(outPath);
+        printf("ERROR: failed to close key file");
+        return false;
+    }
     return true;
 }
 
@@ -108,42 +132,56 @@ bool xor_cipher(FILE *data, FILE *key, char *out_path)
 
     srand(time(NULL));
 
-    char *out_name = "output";
-    char file_extension[5];
     int random = rand() % 1000;  // for file extension
     
-    unsigned long long remaining = get_size_file(data);;
+    long long data_size = get_size_file(data);
+    long long key_size = get_size_file(key);
+    if (data_size < 0 || key_size < 0 || data_size != key_size) {
+        fprintf(stderr, "\nERROR: invalid data or key size");
+        return false;
+    }
+
+    unsigned long long remaining = data_size;
     size_t chunk = 0;
     size_t n_data = 0;
     size_t n_key = 0;
 
-    // create output file
-    strcat(out_path, "/");
-    strcat(out_path, out_name);
-    sprintf(file_extension, "%d", random);
-    strcat(out_path, ".");
-    strcat(out_path, file_extension);
-    FILE *out = fopen(out_path, "wb");
+    // Create a new output file, trying another number if it already exists
+    char new_path[256];
+    FILE *out = NULL;
+    for (int attempt = 0; attempt < 1000; attempt++) {
+        int length = snprintf(new_path, sizeof(new_path), "%s/output.%d", out_path, (random + attempt) % 1000);
+        if (length < 0 || length >= (int)sizeof(new_path)) {
+            fprintf(stderr, "\nERROR: output path is too long");
+            return false;
+        }
+
+        out = fopen(new_path, "wbx");
+        if (out != NULL || errno != EEXIST) break;
+    }
 
     if (out == NULL)
     {
-        fprintf (stderr, "\n\nERROR: cannot create '%s' in '%s' folder", out_name, out_path);
+        fprintf (stderr, "\n\nERROR: cannot create an output file in '%s' folder", out_path);
         return false;
     }
+    strcpy(out_path, new_path);
 
     while (remaining > 0)
     {
         // check buffer size
         if (remaining > BUFFER_SIZE) chunk = BUFFER_SIZE;
-        else chunk = remaining;
+        else chunk = (size_t)remaining;
 
         // read files
         n_data = fread(buffer_data, 1, chunk, data);
         n_key = fread(buffer_key, 1, chunk, key);
 
-        if (n_data != n_key)
+        if (n_data != chunk || n_key != chunk)
         {
             fprintf (stderr, "\n\nERROR: failed to read files");
+            fclose(out);
+            remove(out_path);
             return false;
         }
 
@@ -152,7 +190,9 @@ bool xor_cipher(FILE *data, FILE *key, char *out_path)
 
         if(fwrite(buffer_data, 1, chunk, out) != chunk)
         {
-            fprintf (stderr, "\n\nERROR: failed to write to '%s'", out_name);
+            fprintf (stderr, "\n\nERROR: failed to write to '%s'", out_path);
+            fclose(out);
+            remove(out_path);
             return false;
         }
 
@@ -161,6 +201,10 @@ bool xor_cipher(FILE *data, FILE *key, char *out_path)
 
     rewind(data);
     rewind(key);
-    fclose(out);
+    if (fclose(out) != 0) {
+        remove(out_path);
+        fprintf(stderr, "\nERROR: failed to close output file");
+        return false;
+    }
     return true;
 }
